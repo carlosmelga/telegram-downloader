@@ -1,5 +1,5 @@
 import { NewMessage } from "telegram/events/index.js";
-import { getClient } from "./lib/client.js";
+import { getClient, resolveEntity } from "./lib/client.js";
 import { ensureConfig } from "./lib/setup.js";
 import { saveConfig } from "./lib/config.js";
 import { downloadFile, registerFile } from "./lib/download.js";
@@ -19,6 +19,7 @@ async function main() {
   setConcurrency(config.concurrency);
 
   const client = await getClient(config);
+  let entity = await resolveEntity(client, config.source);
 
   let currentHandler = (event) => enqueue(client, event.message, config.downloadDir);
   let currentEvent = new NewMessage({ chats: [config.source] });
@@ -35,11 +36,11 @@ async function main() {
       await client.disconnect();
       process.exit(0);
     },
-    onBackfill: (count) => runBackfill(client, config.source, config.downloadDir, count),
+    onBackfill: (count) => runBackfill(client, entity, config.downloadDir, count),
     onDeleteCompleted: async () => {
       const done = queue.list().filter((it) => it.status === STATUS.DONE);
       if (!done.length) return;
-      await client.deleteMessages(config.source, done.map((it) => it.messageId), { revoke: true });
+      await client.deleteMessages(entity, done.map((it) => it.messageId), { revoke: true });
       queue.removeMany(done.map((it) => it.id));
     },
     onListDialogs: () => client.getDialogs({ limit: 50 }),
@@ -48,6 +49,7 @@ async function main() {
       config.source = String(dialog.id);
       config.sourceLabel = dialog.title || dialog.name;
       saveConfig(config);
+      entity = dialog;
 
       currentHandler = (event) => enqueue(client, event.message, config.downloadDir);
       currentEvent = new NewMessage({ chats: [config.source] });

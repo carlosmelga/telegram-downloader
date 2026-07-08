@@ -11,8 +11,8 @@
   "license": "ISC",
   "type": "module",
   "dependencies": {
-    "blessed": "^0.1.81",
     "input": "^1.0.1",
+    "neo-blessed": "^0.2.0",
     "p-limit": "^7.3.0",
     "telegram": "^2.26.22"
   }
